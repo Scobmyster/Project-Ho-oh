@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 14f815998af7fe54cba538e011a5ed20
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - normalMat: {fileID: 2100000, guid: 02f790b9fdcbe1143b416c9ad9cd464f, type: 2}
+  - highlightedMat: {fileID: 2100000, guid: 9cee20202a9f65743a472b80e1c5730a, type: 2}
+  - road: {fileID: 1332705125511862, guid: f5d0f47ab2a920a44b1193dca4d3141a, type: 2}
+  - filter: {instanceID: 0}
+  - roadMesh: {fileID: 4300000, guid: 9bbfd86f7f30994438dc2aebeab96b9e, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
