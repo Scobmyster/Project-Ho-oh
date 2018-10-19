@@ -1,49 +1,47 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿
 using UnityEngine;
 
 public class CameraController : MonoBehaviour
 {
 
-    public float zoomSpeed = 4.0f;      // Speed of the camera going back and forth
+    public float panSpeed = 20f;
+    public float panBorderThickness = 10f;
+    public Vector2 panLimit;
 
-    private Vector3 mouseOrigin;    // Position of cursor when mouse dragging starts
-    private bool isZooming;     // Is the camera zooming?
+    public float scrollSpeed = 20f;
+    public float minY = 20f;
+    public float maxY = 120f;
 
-
-    void Start ()
+    private void Update()
     {
-       
-	}
-	
-	
-	void Update ()
-    {
+        Vector3 pos = transform.position;
 
-        float xAxisValue = Input.GetAxis("Horizontal");
-        float zAxisValue = Input.GetAxis("Vertical");
-        if (Camera.current != null)
+        if (Input.GetKey(KeyCode.W) || Input.mousePosition.y >= Screen.height - panBorderThickness)
         {
-            Camera.current.transform.Translate(new Vector3(xAxisValue, 0.0f, zAxisValue));
+            pos.z += panSpeed * Time.deltaTime;
+        }
+        if (Input.GetKey(KeyCode.S) || Input.mousePosition.y <= panBorderThickness)
+        {
+            pos.z -= panSpeed * Time.deltaTime;
+        }
+        if (Input.GetKey(KeyCode.D) || Input.mousePosition.x >= Screen.width - panBorderThickness)
+        {
+            pos.x += panSpeed * Time.deltaTime;
+        }
+        if (Input.GetKey(KeyCode.A) || Input.mousePosition.x <= panBorderThickness)
+        {
+            pos.x -= panSpeed * Time.deltaTime;
         }
 
-        // Get the middle mouse button
-        if (Input.GetMouseButtonDown(2))
-        {
-            // Get mouse origin
-            mouseOrigin = Input.mousePosition;
-            isZooming = true;
-        }
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        pos.y -= scroll * scrollSpeed * 100f * Time.deltaTime;
 
-        if (!Input.GetMouseButton(2)) isZooming = false;
 
-        // Move the camera linearly along Z axis
-        if (isZooming)
-        {
-            Vector3 pos = Camera.main.ScreenToViewportPoint(Input.mousePosition - mouseOrigin);
+        pos.x = Mathf.Clamp(pos.x, -panLimit.x, panLimit.x);
+        pos.y = Mathf.Clamp(pos.y, minY, maxY);
+        pos.z = Mathf.Clamp(pos.z, -panLimit.y, panLimit.y);
 
-            Vector3 move = pos.y * zoomSpeed * transform.forward;
-            transform.Translate(move, Space.World);
-        }
+        transform.position = pos;
     }
+
 }

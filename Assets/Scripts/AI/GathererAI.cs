@@ -15,9 +15,9 @@ public class GathererAI : MonoBehaviour
     };
 
     private State state;
-    private List<ResourceNode> resourceNodeList;
+    private List<Extractor> extractorList;
     private List<StorageNode> storageNodeList;
-    private ResourceNode resourceNode;
+    private Extractor currentExtractor;
     private StorageNode storageNode;
     private GathererUnit unit;
     private GameManager manager;
@@ -32,13 +32,15 @@ public class GathererAI : MonoBehaviour
     {
         state = State.Idle;
         manager = FindObjectOfType<GameManager>();
-        resourceNodeList = new List<ResourceNode>();
+        extractorList = new List<Extractor>();
         storageNodeList = new List<StorageNode>();
         unit = GetComponent<GathererUnit>();
         inventoryText = gameObject.GetComponentInChildren<TextMesh>();
         inventorySpace = 50;
         UpdateInventoryText();
         gathererUI = this.GetComponent<GathererUI>();
+        GameManager.OnExtractorDemolishListeners += RemoveExtractorFromPlan;
+        GameManager.OnStorageDemolishListeners += RemoveStorageFromPlan;
     }
 
     private void Update()
@@ -46,13 +48,11 @@ public class GathererAI : MonoBehaviour
         UpdateStateMachine();
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            Debug.Log("Closing interface");
             displaying = false;
             gathererUI.ToggleUI(displaying);
         }
         if (Input.GetMouseButtonDown(0) && mouseOverMe)
         {
-            Debug.Log("Displaying interface");
             DisplayInterface();
             displaying = true;
         }
@@ -64,25 +64,29 @@ public class GathererAI : MonoBehaviour
         {
             case (State.Idle):
                 UpdateInventoryText();
-                if(resourceNode != null && resourceNode.HasResources())
+                if(currentExtractor != null && currentExtractor.HasResources())
                 {
                     state = State.MovingToResource;
                 }
                 else
                 {
-                    int size = resourceNodeList.Count;
-                    if(resourceNodeList != null && size > 0)
-                        resourceNode = resourceNodeList[Random.Range(0, resourceNodeList.Count)];
+                    int size = extractorList.Count;
+                    if(extractorList != null && size > 0)
+                        currentExtractor = extractorList[Random.Range(0, extractorList.Count)];
                 }
                 break;
             case (State.MovingToResource):
                 UpdateInventoryText();
-                if(unit.is_Idle)
+                if(unit.is_Idle && currentExtractor != null)
                 {
-                    unit.MoveTo(resourceNode.GetPosition(), () => 
+                    unit.MoveTo(currentExtractor.GetPosition(), () =>
                     {
                         state = State.CollectingResource;
                     });
+                }
+                if(currentExtractor == null)
+                {
+                    state = State.Idle;
                 }
                 break;
             case (State.CollectingResource):
@@ -93,13 +97,13 @@ public class GathererAI : MonoBehaviour
                         {
                             state = State.MovingToStorage;
                         }
-                        else if(!resourceNode.HasResources())
+                        else if(!currentExtractor.HasResources())
                         {
                             state = State.Idle;
                         }
                         else
                         {
-                            resourceNode.GrabResource();
+                            currentExtractor.GrabResource();
                             resourceInventory++;
                             UpdateInventoryText();
                         }
@@ -109,12 +113,21 @@ public class GathererAI : MonoBehaviour
                 UpdateInventoryText();
                 if(unit.is_Idle)
                 {
-                    if (storageNode == null)
-                        storageNode = storageNodeList[0];
-                    unit.MoveTo(storageNode.GetPosition(), () => 
+
+                    if (storageNodeList.Count > 0)
                     {
-                        state = State.DroppingInStorage;
-                    });
+                        if (storageNode != null)
+                        {
+                            unit.MoveTo(storageNode.GetPosition(), () =>
+                            {
+                                state = State.DroppingInStorage;
+                            });
+                        }
+                        else
+                        {
+                            storageNode = storageNodeList[0];
+                        }
+                    }
                 }
                 break;
             case (State.DroppingInStorage):
@@ -130,9 +143,21 @@ public class GathererAI : MonoBehaviour
         }
     }
 
+    public void RemoveExtractorFromPlan(Extractor node)
+    {
+        extractorList.Remove(node);
+        currentExtractor = null;
+    }
+
+    public void RemoveStorageFromPlan(StorageNode node)
+    {
+        storageNodeList.Remove(node);
+        storageNode = null;
+    }
+
     private void DisplayInterface()
     {
-        gathererUI.UpdateInfo(resourceNodeList, storageNodeList, "Alpha Gatherer");
+        gathererUI.UpdateInfo(extractorList, storageNodeList, "Alpha Gatherer");
     }
 
     private void OnMouseOver()
@@ -145,14 +170,24 @@ public class GathererAI : MonoBehaviour
         mouseOverMe = false;
     }
 
-    public void AddToResourceList(ResourceNode node)
+    public void AddToExtractorList(Extractor node)
     {
-        resourceNodeList.Add(node);
+        extractorList.Add(node);
+    }
+
+    public List<Extractor> GetExtractorList()
+    {
+        return extractorList;
     }
 
     public void AddToStorageList(StorageNode node)
     {
         storageNodeList.Add(node);
+    }
+
+    public List<StorageNode> GetStorageList()
+    {
+        return storageNodeList;
     }
 
     private void UpdateInventoryText()

@@ -1,17 +1,26 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class BuildingManager : MonoBehaviour
 {
 
     public GameObject buildPreview;
     private GameObject currentBuilding;
-    public Dictionary<string, GameObject> buildings;
     public GameObject road;
     public GameObject storage;
-    public GameObject resource;
+    public GameObject forest;
     public GameObject gatherer;
+    public GameObject farm;
+    public GameObject wheatField;
+    public GameObject rock;
+    public GameObject carrotField;
+
+    public Dictionary<string, GameObject> buildings;
+    public Dictionary<string, GameObject> resources;
+
+    public static EventHandler OnLoadBuildings;
 
     public void Start()
     {
@@ -23,8 +32,14 @@ public class BuildingManager : MonoBehaviour
         buildings = new Dictionary<string, GameObject>();
         buildings.Add("Road", road);
         buildings.Add("Storage", storage);
-        buildings.Add("Resource", resource);
-        yield return null;
+        buildings.Add("Farm", farm);
+        buildings.Add("WheatField", wheatField);
+        buildings.Add("CarrotField", carrotField);
+        resources = new Dictionary<string, GameObject>();
+        resources.Add("Forest", forest);
+        resources.Add("Stone", rock);
+        yield return new WaitForSeconds(1);
+        OnLoadBuildings(this, EventArgs.Empty);
     }
 
     public void SetBuildPreview(Vector3 position)
@@ -37,6 +52,10 @@ public class BuildingManager : MonoBehaviour
         if (buildings.ContainsKey(name))
         {
             currentBuilding = buildings[name];
+        }
+        else if (resources.ContainsKey(name))
+        {
+            currentBuilding = resources[name];
         }
         else
         {

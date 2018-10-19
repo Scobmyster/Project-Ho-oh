@@ -11,98 +11,53 @@ public class GameManager : MonoBehaviour
     private float resourceTickCounter;
     private List<GathererAI> gatherers;
     private string lastResourceName;
-    private List<ResourceNode> resourceNodeList;
+    private string lastStorageName;
+    private List<Extractor> extractorList;
     private List<StorageNode> storageNodeList;
+    private List<ResourceNode> resourceNodeList;
+    private Dictionary<string, int> extractorNameToNumber;
 
     public EventHandler OnResourceTickTimeUp;
+    public delegate void OnExtractorDemolishDelegate(Extractor node);
+    static public event OnExtractorDemolishDelegate OnExtractorDemolishListeners;
+    public delegate void OnStorageNodeDemolishDelegate(StorageNode node);
+    static public event OnStorageNodeDemolishDelegate OnStorageDemolishListeners;
+    public delegate void OnResourceNodeDemolishDelegate(ResourceNode node);
+    static public event OnResourceNodeDemolishDelegate OnResourceDemolishListeners;
+
+
 
     private void Awake()
     {
         resourceNodeList = new List<ResourceNode>();
+        extractorList = new List<Extractor>();
         storageNodeList = new List<StorageNode>();
+        gatherers = new List<GathererAI>();
+        extractorNameToNumber = new Dictionary<string, int>();
         resourceTickTime = 3f;        //1f is about one second
         resourceTickCounter = 0f;
-        gatherers = new List<GathererAI>();
         lastResourceName = "Resource #0";
-    }
-
-    public void UpdateGathererAI()
-    {
-        UpdateGameData();
-    }
-
-    public void UpdateGameData()
-    {
-        List<ResourceNode> grabbedResources = GrabResourceNodes();
-        int sizeOfList = grabbedResources.Count;
-        if (sizeOfList > 0)
-        { 
-            for (int i = 0; i < sizeOfList; i++)
-            {
-                resourceNodeList.Add(grabbedResources[i]);
-            }
-        }
-        List<StorageNode> grabbedStorages = GrabStorageNodes();
-        sizeOfList = grabbedStorages.Count;
-        if(sizeOfList > 0)
-        {
-            for (int i = 0; i < sizeOfList; i++)
-            {
-                storageNodeList.Add(grabbedStorages[i]);
-            }
-        }
+        lastStorageName = "Storage #0";
     }
 
     public void AddGatherer(GathererAI ai)
     {
-        Debug.Log("Adding ai");
         gatherers.Add(ai);
     }
 
-    public List<ResourceNode> GrabResourceNodes()
+    public void AddResourceNode(ResourceNode node)
     {
-        List<ResourceNode> resources = new List<ResourceNode>();
-        GameObject[] collection = GameObject.FindGameObjectsWithTag("Resource");
-        bool match = false;
-        
-        for(int i = 0; i < collection.Length; i++)
-        {
-            match = false;
-            foreach (ResourceNode node in resourceNodeList)
-            {
-                if (collection[i].transform.position == node.GetPosition())
-                {
-                    match = true;
-                }
-            }
-            if(!match)
-                resources.Add(new ResourceNode(collection[i].transform));
-        }
-
-        return resources;
+        resourceNodeList.Add(node);
     }
 
-    public List<StorageNode> GrabStorageNodes()
+    public void AddExtractor(Extractor extractor)
     {
-        List<StorageNode> storages = new List<StorageNode>();
-        GameObject[] collection = GameObject.FindGameObjectsWithTag("Storage");
-        bool match = false;
+        extractorList.Add(extractor);
+    }
 
-        for (int i = 0; i < collection.Length; i++)
-        {
-            match = false;
-            foreach (StorageNode node in storageNodeList)
-            {
-                if(collection[i].transform.position == node.GetPosition())
-                {
-                    match = true;
-                }
-            }
-            if(!match)
-                storageNodeList.Add(new StorageNode(collection[i].transform));
-        }
-
-        return storageNodeList;
+    public void AddStorage(StorageNode node)
+    {
+        storageNodeList.Add(node);
     }
 
     private void Update()
@@ -119,14 +74,52 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public string GenerateResourceName()
+    public string GenerateExtractorName(string extractorName)
     {
-        string[] number = Regex.Split(lastResourceName, @"\D+");
-        lastResourceName = "Resource #" + (int.Parse(number[1]) + 1);
-        return lastResourceName;
+        if(extractorNameToNumber.ContainsKey(extractorName))
+        {
+            extractorNameToNumber[extractorName] += 1;
+        }
+        else
+        {
+            extractorNameToNumber.Add(extractorName, 0);
+        }
+        string toReturn = extractorName + " #" + extractorNameToNumber[extractorName];
+        return toReturn;
     }
 
-    public ResourceNode FindNodeFromPosition(Vector3 position)
+    public string GenerateStorageName()
+    {
+        string[] number = Regex.Split(lastStorageName, @"\D+");
+        lastStorageName = "Storage #" + (int.Parse(number[1]) + 1);
+        return lastStorageName;
+    }
+
+    public Extractor FindExtractorFromPosition(Vector3 position)
+    {
+        foreach(Extractor node in extractorList)
+        {
+            if(node.GetPosition() == position)
+            {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    public StorageNode FindStorageNodeFromPosition(Vector3 position)
+    {
+        foreach (StorageNode node in storageNodeList)
+        {
+            if (node.GetPosition() == position)
+            {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    public ResourceNode FindResourceNodeFromPosition(Vector3 position)
     {
         foreach(ResourceNode node in resourceNodeList)
         {
@@ -136,6 +129,34 @@ public class GameManager : MonoBehaviour
             }
         }
         return null;
+    }
+
+    public List<ResourceNode> GrabGameResourceList()
+    {
+        return resourceNodeList;
+    }
+
+    public void RemoveExtractor(GameObject go)
+    {
+        Extractor extractor = FindExtractorFromPosition(go.transform.position);
+        extractor.OnDemolish();
+        OnExtractorDemolishListeners(extractor);
+        extractorList.Remove(extractor);
+    }
+
+    public void RemoveResource(GameObject go)
+    {
+        ResourceNode resource = FindResourceNodeFromPosition(go.transform.position);
+        resource.OnDemolish();
+        OnResourceDemolishListeners(resource);
+        resourceNodeList.Remove(resource);
+    }
+
+    public void RemoveStorage(GameObject go)
+    {
+        StorageNode storage = FindStorageNodeFromPosition(go.transform.position);
+        OnStorageDemolishListeners(storage);
+        storageNodeList.Remove(storage);
     }
 
 }

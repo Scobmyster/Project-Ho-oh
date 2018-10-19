@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class BuildNode : MonoBehaviour
 {
@@ -16,7 +17,9 @@ public class BuildNode : MonoBehaviour
     private GameManager game;
     public UIManager ui;
     public GameObject building;
-    
+    public delegate void OnResourceNodePlace(ResourceNode node);
+    static public event OnResourceNodePlace OnResourceNodePlaceListeners;
+
 
     public void Start()
     {
@@ -30,17 +33,9 @@ public class BuildNode : MonoBehaviour
         game = FindObjectOfType<GameManager>();
     }
 
-    private void OnMouseEnter()
+    public void SetNodeSelected(bool nodeSelected)
     {
-        builder.SetBuildPreview(this.transform.position);
-        GetComponentInChildren<MeshRenderer>().sharedMaterial = highlightedMat;
-        nodeSelected = true;
-    }
-
-    private void OnMouseExit()
-    {
-        GetComponentInChildren<MeshRenderer>().sharedMaterial = normalMat;
-        nodeSelected = false;
+        this.nodeSelected = nodeSelected;
     }
 
     private void Update()
@@ -50,12 +45,8 @@ public class BuildNode : MonoBehaviour
             if (!isBuiltOn && ui.currentMode == UIManager.GAMEMODES.BUILD)
             {
                 if (builder.GetCurrentBuilding() != null)
-                { 
-                    this.GetComponentInChildren<MeshRenderer>().enabled = false;
-                    building = (GameObject)Instantiate(builder.GetCurrentBuilding(), new Vector3(this.transform.position.x, builder.GetCurrentBuilding().GetComponent<BuildingInfo>().spawnHeight, this.transform.position.z), builder.GetCurrentBuilding().transform.rotation, navmesh.surface.gameObject.transform);
-                    isBuiltOn = true;
-                    navmesh.UpdateMesh();
-                    game.UpdateGathererAI();
+                {
+                    Build(builder.GetCurrentBuilding());
                 }
                 else
                 {
@@ -68,6 +59,38 @@ public class BuildNode : MonoBehaviour
                 game.AddGatherer(go.GetComponent<GathererAI>());
             }
         }
+    }
+
+    public void Build(GameObject buildingPrefab)
+    {
+        if (navmesh == null)
+            navmesh = FindObjectOfType<NavmeshManager>();
+        if (game == null)
+            game = FindObjectOfType<GameManager>();
+        if (buildingPrefab.GetComponent<BuildingInfo>() == null)
+        {
+            Debug.LogError("You are trying to place a building without a buildinginfo script I will save you just this once and put one on for you:)");
+            buildingPrefab.AddComponent<BuildingInfo>();
+            buildingPrefab.GetComponent<BuildingInfo>().spawnHeight = 0.8f;
+        }
+        building = (GameObject)Instantiate(buildingPrefab, new Vector3(this.transform.position.x, buildingPrefab.GetComponent<BuildingInfo>().spawnHeight, this.transform.position.z), buildingPrefab.transform.rotation, navmesh.surface.gameObject.transform);
+        isBuiltOn = true;
+        navmesh.UpdateMesh();
+        if (building.tag == "Resource")
+        {
+            ResourceNode node = new ResourceNode(nodeCoords, building.GetComponent<ResourceSpawnInfo>().product, building);
+            game.AddResourceNode(node);
+            if(OnResourceNodePlaceListeners != null)
+                OnResourceNodePlaceListeners(node);
+
+        }
+        if (building.tag == "Extractor")
+        {
+            game.AddExtractor(building.GetComponent<Extractor>());
+            building.GetComponent<Extractor>().extractorCoords = nodeCoords;
+        }
+        if (building.tag == "Storage")
+            game.AddStorage(new StorageNode(nodeCoords, building));
     }
 
     public void SetBuilding(GameObject go)
@@ -93,6 +116,20 @@ public class BuildNode : MonoBehaviour
 
         }
         return false;
+    }
+
+    public void Demolish()
+    {
+        if(isBuiltOn)
+        {
+            if(game.FindExtractorFromPosition(building.transform.position) != null)
+                game.RemoveExtractor(building);
+            else if(game.FindStorageNodeFromPosition(building.transform.position) != null)
+                game.RemoveStorage(building);
+            Destroy(building);
+            building = null;
+            isBuiltOn = false;
+        }
     }
 
     public void SetNodeCoords(Vector2 nodeCoords)

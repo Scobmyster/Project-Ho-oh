@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 public class NodeManager : MonoBehaviour {
 
@@ -9,6 +10,7 @@ public class NodeManager : MonoBehaviour {
     public GameObject ground;
     private bool displayNodes;
     public GameObject prefabRoadTurn;
+    public BuildingManager builder;
 
     private void Start()
     {
@@ -18,6 +20,8 @@ public class NodeManager : MonoBehaviour {
         int zSize = (int)ground.transform.localScale.z;
         Debug.Log(zSize);
         nodes = new List<GameObject>();
+        builder = FindObjectOfType<BuildingManager>();
+        BuildingManager.OnLoadBuildings += GenerateResources;
         for (int x = -xSize / 2; x < xSize / 2; x++)
         {
             for (int z = -zSize / 2; z < zSize / 2; z++)
@@ -51,72 +55,6 @@ public class NodeManager : MonoBehaviour {
         }
     }
 
-    /*public void UpdateSurroundingNodes(Vector2 nodeCoords)
-    {
-        Vector2 leftDir = new Vector2(nodeCoords.x + 1, nodeCoords.y);
-        Vector2 rightDir = new Vector2(nodeCoords.x - 1, nodeCoords.y);
-        Vector2 topDir = new Vector2(nodeCoords.x, nodeCoords.y - 1);
-        Vector2 bottomDir = new Vector2(nodeCoords.x, nodeCoords.y + 1);
-
-
-        bool left = NodeBuiltOn(leftDir);
-        bool right = NodeBuiltOn(rightDir);
-        bool top = NodeBuiltOn(topDir);
-        bool bottom = NodeBuiltOn(bottomDir);
-
-        if(left && top && bottom && right)
-        {
-
-        }
-        else if(left || right)
-        {
-            Debug.Log("Built on node to either left or right");
-            if(top)
-            {
-                Debug.Log("Built on node to top");
-                BuildNode centre = GrabGOAtNodeCoords(nodeCoords).GetComponent<BuildNode>();
-                Destroy(centre.building);
-                if(left)
-                {
-                    GameObject swapRoad = (GameObject)Instantiate(prefabRoadTurn, new Vector3(centre.building.transform.position.x, 0.7f, centre.building.transform.position.z), Quaternion.Euler(-90, 270, 0));
-                    centre.SetBuilding(swapRoad);
-                }
-                else
-                {
-                    GameObject swapRoad = (GameObject)Instantiate(prefabRoadTurn, new Vector3(centre.building.transform.position.x, 0.7f, centre.building.transform.position.z), Quaternion.Euler(-90, 0, 0));
-                    centre.SetBuilding(swapRoad);
-                }
-            }
-            else if (bottom)
-            {
-                BuildNode centre = GrabGOAtNodeCoords(nodeCoords).GetComponent<BuildNode>();
-                Destroy(centre.building);
-                Debug.Log("NodeBuiltOn on node to bottom");
-                if (left)
-                {
-                    GameObject swapRoad = (GameObject)Instantiate(prefabRoadTurn, new Vector3(centre.building.transform.position.x, 0.7f, centre.building.transform.position.z), Quaternion.Euler(-90, 180, 0));
-                    centre.SetBuilding(swapRoad);
-                }
-                else
-                {
-                    GameObject swapRoad = (GameObject)Instantiate(prefabRoadTurn, new Vector3(centre.building.transform.position.x, 0.7f, centre.building.transform.position.z), Quaternion.Euler(-90, 90, 0));
-                    centre.SetBuilding(swapRoad);
-                }
-            }
-            else if (left)
-                GrabGOAtNodeCoords(leftDir).GetComponent<BuildNode>().building.transform.rotation = Quaternion.Euler(-90, 0, 90);
-            else
-                GrabGOAtNodeCoords(rightDir).GetComponent<BuildNode>().building.transform.rotation = Quaternion.Euler(-90, 0, 90);
-        }
-        else if(top || bottom)
-        {
-            if (top)
-                GrabGOAtNodeCoords(topDir).GetComponent<BuildNode>().building.transform.rotation = Quaternion.Euler(-90, 90, 90);
-            else
-                GrabGOAtNodeCoords(bottomDir).GetComponent<BuildNode>().building.transform.rotation = Quaternion.Euler(-90, 90, 90);
-        }
-    }*/
-
     public bool NodeBuiltOn(Vector2 nodeCoords)
     {
         BuildNode node = GrabGOAtNodeCoords(nodeCoords).GetComponent<BuildNode>();
@@ -143,5 +81,27 @@ public class NodeManager : MonoBehaviour {
             }
         }
         return null;
+    }
+
+    public void GenerateResources(object sender, EventArgs e)
+    {
+        /*int resourceCount = 30;
+        string[] keys = new string[builder.resources.Count];
+        builder.resources.Keys.CopyTo(keys, 0);
+        for (int i = 0; i < resourceCount; i++)
+        {
+            BuildNode node = nodes[UnityEngine.Random.Range(0, nodes.Count)].GetComponent<BuildNode>();
+            while(node.isBuiltOn)
+            {
+                node = nodes[UnityEngine.Random.Range(0, nodes.Count)].GetComponent<BuildNode>();
+            }
+            node.Build(builder.resources[keys[UnityEngine.Random.Range(0, keys.Length)]]);
+        }*/
+        List<ResourceMapNode> map = ResourceGenerator.GenerateResourceMap(nodes, builder.resources);
+        foreach(ResourceMapNode node in map)
+        {
+            BuildNode buildNode = node.GetNode();
+            buildNode.Build(node.GetResourcePrefab());
+        }
     }
 }

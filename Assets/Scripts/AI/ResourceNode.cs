@@ -2,52 +2,44 @@
 using System.Collections;
 using System;
 
+public enum ResourceProducts { WOOD, WHEAT, POTATO, CARROT, STONE };
+
 public class ResourceNode
 {
 
-    private Transform resourceNodeTransform;
-    private TextMesh inventoryText;
-    public string name;
     private GameManager manager;
+    private ResourceProducts product;
+    private GameObject myObject;
+    private Vector2 nodeCoords;
 
-    private int resourceAmount;
-
-    public ResourceNode(Transform resourceNodeTransform)
+    public ResourceNode(Vector2 nodeCoords, ResourceProducts product, GameObject myObject)
     {
         manager = GameObject.FindObjectOfType<GameManager>();
-        this.resourceNodeTransform = resourceNodeTransform;
-        inventoryText = resourceNodeTransform.gameObject.GetComponentInChildren<TextMesh>();
-        resourceAmount = 1;
-        UpdateInventoryText();
-        manager.OnResourceTickTimeUp += AddResourceEachResourceTick;
-        name = manager.GenerateResourceName();
-        UpdateInventoryText();
+        this.nodeCoords = nodeCoords;
+        this.product = product;
+        this.myObject = myObject;
+        manager.AddResourceNode(this);
     }
 
     public Vector3 GetPosition()
     {
-        return resourceNodeTransform.position;
+        return myObject.transform.position;
     }
 
-    public void GrabResource()
+    public Vector2 GetNodeCoords()
     {
-        resourceAmount -= 1;
-        UpdateInventoryText();
+        return nodeCoords;
     }
 
-    public bool HasResources()
+    public ResourceProducts GetProduct()
     {
-        return resourceAmount > 0;
+        return product;
     }
 
-    public void UpdateInventoryText()
+    public void OnDemolish()
     {
-        inventoryText.text = name + " : " + resourceAmount;
+
     }
 
-    public void AddResourceEachResourceTick(object sender, EventArgs e)
-    {
-        resourceAmount += 1;
-        UpdateInventoryText();
-    }
+
 }

@@ -8,6 +8,7 @@ TagManager:
   - Storage
   - UI
   - Ground
+  - Extractor
   layers:
   - Default
   - TransparentFX

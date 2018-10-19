@@ -4,22 +4,34 @@ using System.Collections;
 public class StorageNode 
 {
 
-    private Transform storageNodeTransform;
+    private Vector2 nodeCoords;
     private TextMesh inventoryText;
+    public string name;
+    private GameManager manager;
 
     private int storageAmount;
 
-    public StorageNode(Transform storageNodeTransform)
+    private GameObject myObject;
+
+    public StorageNode(Vector2 nodeCoords, GameObject myObject)
     {
-        this.storageNodeTransform = storageNodeTransform;
-        inventoryText = storageNodeTransform.gameObject.GetComponentInChildren<TextMesh>();
+        this.nodeCoords = nodeCoords;
+        this.myObject = myObject;
+        inventoryText = myObject.GetComponentInChildren<TextMesh>();
         storageAmount = 0;
+        manager = GameObject.FindObjectOfType<GameManager>();
+        name = manager.GenerateStorageName();
         UpdateInventoryText();
     }
 
     public Vector3 GetPosition()
     {
-        return storageNodeTransform.position;
+        return myObject.transform.position;
+    }
+
+    public Vector2 GetNodeCoords()
+    {
+        return nodeCoords;
     }
 
     public void DropResource(int amount)

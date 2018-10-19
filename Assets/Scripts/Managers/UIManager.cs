@@ -7,41 +7,62 @@ using UnityEngine.EventSystems;
 public class UIManager : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
 
-    public enum GAMEMODES { NONE, BUILD, DISTRIBUTION };
+    public enum GAMEMODES { NONE, BUILD, DISTRIBUTION, DEMOLISH };
 
     public GameObject buildBar;
     public GameObject distributionBar;
+    public GameObject resourceBar;
+    public GameObject extractorBar;
     public GameObject gathererUI;
     public GameObject gathererTitle;
-    public GameObject gathererResourceContent;
-    public GameObject addResourceButton;
+    public GameObject gathererContent;
+    public GameObject addExtractorButton;
     public GameObject addStorageButton;
+    public GameObject toggleExtractor;
+    public GameObject toggleStorage;
 
     private bool showBuild;
     private bool showDistribution;
     private bool buildBarEnabled;
     private bool distributionBarEnabled;
-    private BuildingManager manager;
     public bool mouseOverUI;
 
-
+    private BuildingManager builder;
+    private GameManager game;
     public GathererUI currentGatherer;
+    private BuildNode lastNodeOver;
+
+    private Dictionary<string, GameObject> displayBarMap;
 
     public GAMEMODES currentMode;
+
+    private Vector3 lastMousePosition;
+
 	
 	void Start ()
     {
         currentMode = GAMEMODES.NONE;
         buildBarEnabled = buildBar.activeSelf;
         distributionBarEnabled = distributionBar.activeSelf;
-        manager = FindObjectOfType<BuildingManager>();
+        builder = FindObjectOfType<BuildingManager>();
+        game = FindObjectOfType<GameManager>();
         mouseOverUI = false;
+        displayBarMap = new Dictionary<string, GameObject>();
+        SetupDisplayBarMap();
+        lastMousePosition = new Vector3();
 	}
-	
-	public void ActivateGathererResourceAdder()
+
+    private void SetupDisplayBarMap()
     {
-        currentGatherer.SetSelectResource(true);
-        Debug.Log("Activating select resource");
+        displayBarMap.Add("build", buildBar);
+        displayBarMap.Add("distribution", distributionBar);
+        displayBarMap.Add("resource", resourceBar);
+        displayBarMap.Add("extractor", extractorBar);
+    }
+	
+	public void ActivateGathererExtractorAdder()
+    {
+        currentGatherer.SetSelectExtractor(true);
     }
 
     public void ActivateGathererStorageAdder()
@@ -51,23 +72,25 @@ public class UIManager : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
 
     void Update ()
     {
-        if (currentMode == GAMEMODES.BUILD)
-            UpdateBuild();
-        if (currentMode == GAMEMODES.DISTRIBUTION)
-            UpdateDistribution();
-        if(currentMode == GAMEMODES.NONE)
+        if(currentMode == GAMEMODES.DEMOLISH && Input.GetMouseButtonDown(0))
         {
-            buildBarEnabled = false;
-            distributionBarEnabled = false;
+            BuildNode node = RayCastUtilities.RayCastComponentOfBuildNodeInParent();
+            node.Demolish();
         }
-        if (buildBarEnabled)
-            buildBar.SetActive(true);
-        else
-            buildBar.SetActive(false);
-        if (distributionBarEnabled)
-            distributionBar.SetActive(true);
-        else
-            distributionBar.SetActive(false);
+        if(!mouseOverUI)
+        {
+            lastMousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            if(lastNodeOver != null)
+                lastNodeOver.SetNodeSelected(false);
+            BuildNode node = RayCastUtilities.RayCastComponentOfBuildNodeInParent();
+            if(node != null)
+            {
+                GameObject go = node.gameObject;
+                builder.SetBuildPreview(go.transform.position);
+                node.SetNodeSelected(true);
+                lastNodeOver = node;
+            }
+        }
 	}
 
 
@@ -81,57 +104,50 @@ public class UIManager : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         mouseOverUI = false;
     }
 
-    void UpdateBuild()
-    {
-        if(showBuild && !buildBarEnabled)
-        {
-            distributionBarEnabled = false;
-            buildBarEnabled = true;
-        }
-    }
-
-    void UpdateDistribution()
-    {
-        if (showDistribution && !distributionBarEnabled)
-        {
-            buildBarEnabled = false;
-            distributionBarEnabled = true;
-        }
-    }
-
+    
     public void SetGameMode(int mode)
     {
         switch (mode)
         {
             case (0):
                 currentMode = GAMEMODES.NONE;
-                showDistribution = false;
-                showBuild = false;
+                SwitchOffDisplayBars();
                 break;
             case (1):
                 if (currentMode == GAMEMODES.BUILD)
                 {
                     currentMode = GAMEMODES.NONE;
-                    showBuild = false;
+                    SwitchOffDisplayBars();
                 }
                 else
                 {
                     currentMode = GAMEMODES.BUILD;
-                    showBuild = true;
-                    showDistribution = false;
+                    SwitchDisplayedBar("build");
                 }
                 break;
             case (2):
                 if (currentMode == GAMEMODES.DISTRIBUTION)
                 {
                     currentMode = GAMEMODES.NONE;
-                    showBuild = false;
+                    SwitchOffDisplayBars();
                 }
                 else
                 {
                     currentMode = GAMEMODES.DISTRIBUTION;
-                    showDistribution = true;
-                    showBuild = false;
+                    SwitchDisplayedBar("distribution");
+                }
+                break;
+            case (3):
+                {
+                    if (currentMode == GAMEMODES.DEMOLISH)
+                    {
+                        currentMode = GAMEMODES.NONE;
+                    }
+                    else
+                    {
+                        currentMode = GAMEMODES.DEMOLISH;
+                        SwitchOffDisplayBars();
+                    }
                 }
                 break;
             default:
@@ -141,10 +157,44 @@ public class UIManager : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         }
     }
 
-    public void SetBuildType(string name)
+    public void ToggleResources()
     {
-        manager.SetCurrentBuilding(name); 
+        currentGatherer.SetResourceOnly(toggleExtractor.GetComponent<Toggle>().isOn);
     }
 
-   
+    public void ToggleStorage()
+    {
+        currentGatherer.SetStorageOnly(toggleStorage.GetComponent<Toggle>().isOn);
+    }
+
+    public void SetBuildType(string name)
+    {
+        builder.SetCurrentBuilding(name); 
+    }
+
+    public void SwitchDisplayedBar(string barName)
+    {
+        if (!displayBarMap.ContainsKey(barName))
+            Debug.LogError("Have been given a bar name that does not exist in the map: " + barName);
+        else
+        {
+            foreach(string name in displayBarMap.Keys)
+            {
+                if (name == barName)
+                    displayBarMap[name].SetActive(true);
+                else
+                    displayBarMap[name].SetActive(false);
+            }
+        }
+    }
+
+    public void SwitchOffDisplayBars()
+    {
+        foreach (string name in displayBarMap.Keys)
+        {
+            displayBarMap[name].SetActive(false);
+        }
+    }
+
+
 }
