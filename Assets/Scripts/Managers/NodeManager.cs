@@ -11,6 +11,7 @@ public class NodeManager : MonoBehaviour {
     private bool displayNodes;
     public GameObject prefabRoadTurn;
     public BuildingManager builder;
+    public static Vector2 mapSizeRadius;
 
     private void Start()
     {
@@ -33,6 +34,7 @@ public class NodeManager : MonoBehaviour {
                 nodes.Add(go);
             }
         }
+        mapSizeRadius = new Vector2(xSize / 2, zSize / 2);
     }
 
     private void Update()
